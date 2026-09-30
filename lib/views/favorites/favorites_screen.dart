@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
-import '../../data/directory.dart';
+import '../../data/hotels.dart';
 import '../../services/app_state.dart';
 import '../../widgets/dir_item_tile.dart';
 
@@ -15,7 +15,7 @@ class FavoritesScreen extends StatelessWidget {
       body: ListenableBuilder(
         listenable: AppState.instance,
         builder: (context, _) {
-          final favs = allDirectoryItems()
+          final favs = allSearchableItems()
               .where((i) => AppState.instance.isFavorite(i.key))
               .toList();
           if (favs.isEmpty) {

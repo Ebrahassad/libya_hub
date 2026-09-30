@@ -142,5 +142,14 @@
   "w_showers": "Showers",
   "w_snow_showers": "Snow showers",
   "w_storm": "Thunderstorm",
-  "w_unknown": "Unknown"
+  "w_unknown": "Unknown",
+  "tile_hotels": "Hotels",
+  "hotels_title": "Hotels by city",
+  "hotels_note": "Pick a city or open a region. Hotels with a verified phone or official page show call or page buttons; others open on the map. Confirm prices and availability when booking.",
+  "hotels_count": "{} hotels listed",
+  "hotels_none": "No hotels listed here yet. Use the search buttons.",
+  "hotels_search_maps": "Hotels in {} on the map",
+  "hotels_sources": "Sources & booking",
+  "hotel_map": "Map",
+  "hotel_page": "Official page"
 }

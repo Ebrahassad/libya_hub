@@ -23,16 +23,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/libya_icon.jpg
     - assets/translations/
-
-flutter_launcher_icons:
-  image_path: "assets/images/libya_icon.jpg"
-  android: true
-  ios: true
-  image_path_ios: "assets/images/libya_icon.jpg"

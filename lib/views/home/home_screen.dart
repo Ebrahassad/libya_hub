@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/directory.dart';
+import '../../data/hotels.dart';
 import '../../services/app_state.dart';
 import '../../widgets/city_picker.dart';
 import '../../widgets/dir_item_tile.dart';
@@ -9,6 +10,7 @@ import '../../widgets/open_link.dart';
 import '../../widgets/ticker.dart';
 import '../emergency/emergency_screen.dart';
 import '../favorites/favorites_screen.dart';
+import '../hotels/hotels_screen.dart';
 import '../map/map_screen.dart';
 import '../merchant/merchant_screen.dart';
 import '../news/news_screen.dart';
@@ -57,6 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
           (_) => const RatesScreen()),
       _Tile('tile_news', null, Icons.newspaper, const Color(0xFFD84315),
           (_) => const NewsScreen()),
+      _Tile('tile_hotels', null, Icons.hotel, const Color(0xFF6A1B9A),
+          (_) => const HotelsScreen()),
       _Tile('tile_map', null, Icons.map, const Color(0xFF2E7D32), (_) => const MapScreen()),
       _Tile('tile_emergency', null, Icons.emergency, const Color(0xFFC62828),
           (_) => const EmergencyScreen()),
@@ -72,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DirItem> _results() {
     final q = _norm(_query);
     if (q.isEmpty) return const [];
-    return allDirectoryItems()
+    return allSearchableItems()
         .where((i) => _norm(i.title).contains(q) || _norm(i.desc).contains(q))
         .toList();
   }
@@ -88,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       key: ValueKey(localeCode),
       appBar: AppBar(
-        title: const Text('ليبيا هب | Libya Hub', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('app_title'.tr(), style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
           IconButton(

@@ -17,7 +17,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES = [ROOT / "lib/data/directory.dart", ROOT / "lib/services/live_data.dart"]
+FILES = [
+    ROOT / "lib/data/directory.dart",
+    ROOT / "lib/data/hotels.dart",
+    ROOT / "lib/services/live_data.dart",
+]
 URL_RE = re.compile(r"https?://[^\s'\"$]+")
 # روابط قوالب أو خدمات لا تُفحص بهذه الطريقة
 SKIP_PREFIXES = (
