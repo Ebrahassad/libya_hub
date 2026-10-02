@@ -48,7 +48,6 @@ class ContentStore extends ChangeNotifier {
   String appVersion = '';
   int buildNumber = 0;
   String? _dismissedId;
-  Timer? _timer;
   bool _started = false;
 
   /// إعلان لم يُغلقه المستخدم بعد.
@@ -81,7 +80,7 @@ class ContentStore extends ChangeNotifier {
     } catch (_) {}
     notifyListeners();
     unawaited(refresh());
-    _timer = Timer.periodic(const Duration(minutes: 30), (_) => refresh());
+    Timer.periodic(const Duration(minutes: 30), (_) => refresh());
   }
 
   Future<void> refresh() async {

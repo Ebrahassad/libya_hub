@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_const_constructors
 import '../services/content_store.dart';
 
 /// مصدر أخبار. لكل مصدر أكثر من رابط تغذية (RSS) محتمل، يُجرَّب بالترتيب
