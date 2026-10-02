@@ -1,0 +1,83 @@
+{
+  "_readme": "مثال لكل ما يمكن للمحتوى البعيد تغييره. انسخ ما تحتاجه إلى content.json. هذا الملف نفسه لا يقرؤه التطبيق.",
+
+  "announcement": {
+    "id": "2026-10-oct-1",
+    "text": "تمت إضافة تطبيقات ومواقع جديدة إلى الدليل.",
+    "url": "https://ebrahassad.github.io/Hassadi-Apps/#apps"
+  },
+
+  "update": {
+    "versionCode": 5,
+    "message": "إصدار جديد بمزايا إضافية. حدّث التطبيق من جوجل بلاي.",
+    "url": "https://play.google.com/store/apps/details?id=com.hassadi.libya_hub"
+  },
+
+  "ads": {
+    "enabled": true,
+    "gameId": "1234567",
+    "testMode": true,
+    "bannerPlacement": "Banner_Android",
+    "interstitialPlacement": "Interstitial_Android",
+    "rewardedPlacement": "Rewarded_Android",
+    "banner": true,
+    "interstitial": true,
+    "rewarded": true,
+    "interstitialEvery": 5,
+    "minSecondsBetween": 240,
+    "firstAdAfterSeconds": 120,
+    "dailyCap": 6,
+    "adFreeHours": 24
+  },
+
+  "aboutExtra": "نص إضافي يظهر في شاشة نبذة عن التطبيق.",
+
+  "sections": [
+    {
+      "id": "apps",
+      "groups": [
+        {
+          "title": "تطبيقات جديدة",
+          "items": [
+            { "type": "app", "title": "اسم التطبيق", "desc": "وصف قصير", "package": "com.example.app" },
+            { "type": "app", "title": "تطبيق بلا معرّف حزمة", "desc": "يفتح بحثاً في جوجل بلاي", "search": "اسم التطبيق" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cars",
+      "title": "السيارات",
+      "subtitle": "معارض وقطع غيار",
+      "icon": "car",
+      "color": "#455A64",
+      "groups": [
+        {
+          "title": "مواقع",
+          "items": [
+            { "type": "web", "title": "اسم الموقع", "desc": "وصف", "url": "https://example.ly/" },
+            { "type": "phone", "title": "اتصال", "desc": "رقم الخدمة", "phone": "+218910000000" }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "sections_remove": ["jobs"],
+
+  "hotels": [
+    {
+      "name": "فندق مثال",
+      "city": "طرابلس",
+      "stars": 4,
+      "note": "وصف قصير",
+      "phone": "+218211234567",
+      "phoneLabel": "+218 21 123 4567",
+      "web": "https://example.ly/"
+    }
+  ],
+
+  "newsFeeds": [
+    { "name": "اسم المصدر", "feeds": ["https://example.ly/feed/"], "site": "https://example.ly/", "limit": 10 }
+  ]
+}

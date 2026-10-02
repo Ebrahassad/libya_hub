@@ -48,7 +48,7 @@ List<TickerItem> buildTickerItems(LiveData d, AppState s) {
         'ticker_weather'.tr(args: [w.city, w.temp.round().toString(), weatherKey(w.code).tr()]),
         Colors.orange));
   }
-  for (final n in d.news.take(6)) {
+  for (final n in d.tickerNews(14)) {
     items.add(TickerItem(Icons.campaign, '${n.source}: ${n.title}', Colors.red));
   }
   if (items.isEmpty) {

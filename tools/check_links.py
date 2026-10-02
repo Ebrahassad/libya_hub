@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 FILES = [
     ROOT / "lib/data/directory.dart",
     ROOT / "lib/data/hotels.dart",
+    ROOT / "lib/data/news_sources.dart",
+    ROOT / "content/content.json",
     ROOT / "lib/services/live_data.dart",
 ]
 URL_RE = re.compile(r"https?://[^\s'\"$]+")
@@ -31,6 +33,9 @@ SKIP_PREFIXES = (
     "https://tile.openstreetmap.org",
     "https://api.open-meteo.com",
     "https://api.oilpriceapi.com",
+    "https://news.google.com/rss",
+    "https://api.aladhan.com",
+    "https://api.gold-api.com",
 )
 SOFT = {401, 403, 405, 429, 999}
 HEADERS = {"User-Agent": "Mozilla/5.0 (LibyaHub link checker)", "Accept-Language": "ar,en"}

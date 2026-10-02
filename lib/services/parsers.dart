@@ -168,27 +168,41 @@ String? _tag(String block, String tag) {
   return m == null ? null : _cdata(m.group(1)!);
 }
 
-/// يحلل RSS 2.0 أو Atom بشكل مبسط.
+/// يحلل RSS 2.0 أو Atom بشكل مبسط. إن وُجد وسم <source> (أخبار جوجل) يُستعمل
+/// اسمه كمصدر للخبر ويُحذف اللاحق " - اسم الموقع" من العنوان.
 List<NewsItem> parseFeed(String xml, String source, {int limit = 12}) {
   final out = <NewsItem>[];
   final itemRe = RegExp(r'<(item|entry)[ >].*?</\1>', dotAll: true, caseSensitive: false);
   for (final m in itemRe.allMatches(xml)) {
     final block = m.group(0)!;
-    final title = _tag(block, 'title');
+    final rawTitle = _tag(block, 'title');
     var link = _tag(block, 'link');
     if (link == null || link.isEmpty) {
       link = RegExp(r'<link[^>]*href="([^"]+)"').firstMatch(block)?.group(1);
     }
-    if (title == null || link == null || link.isEmpty) continue;
+    if (rawTitle == null || link == null || link.isEmpty) continue;
+    var title = stripTags(rawTitle);
+    var src = source;
+    final srcTag = _tag(block, 'source');
+    if (srcTag != null && srcTag.isNotEmpty) {
+      src = stripTags(srcTag);
+      final suffix = ' - $src';
+      if (title.endsWith(suffix)) title = title.substring(0, title.length - suffix.length).trim();
+    }
+    if (title.isEmpty) continue;
     final dateRaw = _tag(block, 'pubDate') ?? _tag(block, 'updated') ?? _tag(block, 'published');
-    out.add(NewsItem(stripTags(title), decodeEntities(link.trim()), source,
+    out.add(NewsItem(title, decodeEntities(link.trim()), src,
         dateRaw == null ? null : _parseRssDate(dateRaw)));
     if (out.length >= limit) break;
   }
   return out;
 }
 
-/// رموز الطقس WMO إلى مفتاح ترجمة.
+/// مفتاح لإزالة تكرار الخبر الواحد القادم من أكثر من مصدر.
+String newsKey(String title) =>
+    title.replaceAll(RegExp(r'[^\u0600-\u06FFA-Za-z0-9]'), '').toLowerCase();
+
+// رموز الطقس WMO إلى مفتاح ترجمة.
 String weatherKey(int code) {
   if (code == 0) return 'w_clear';
   if (code == 1) return 'w_mostly_clear';

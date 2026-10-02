@@ -8,6 +8,7 @@ import '../../services/app_state.dart';
 import '../../widgets/city_picker.dart';
 import '../../widgets/dir_item_tile.dart';
 import '../../widgets/open_link.dart';
+import '../../widgets/ad_banner.dart';
 
 /// الفنادق على مستوى المناطق والمدن: فنادق معروفة بأرقامها وصفحاتها وخرائطها،
 /// وأزرار بحث جاهزة (خرائط جوجل وBooking) لكل مدينة.
@@ -18,6 +19,7 @@ class HotelsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('hotels_title'.tr()), centerTitle: true),
+      bottomNavigationBar: const AdBanner(),
       body: ListenableBuilder(
         listenable: AppState.instance,
         builder: (context, _) {

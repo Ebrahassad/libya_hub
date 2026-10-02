@@ -1,9 +1,15 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../config.dart';
 import '../../data/directory.dart';
 import '../../data/hotels.dart';
+import '../../services/ad_service.dart';
 import '../../services/app_state.dart';
+import '../../services/content_store.dart';
+import '../../services/play_update.dart';
+import '../../widgets/ad_banner.dart';
 import '../../widgets/city_picker.dart';
 import '../../widgets/dir_item_tile.dart';
 import '../../widgets/open_link.dart';
@@ -11,20 +17,26 @@ import '../../widgets/ticker.dart';
 import '../emergency/emergency_screen.dart';
 import '../favorites/favorites_screen.dart';
 import '../hotels/hotels_screen.dart';
+import '../info/about_libya_screen.dart';
+import '../info/about_screen.dart';
+import '../info/privacy_screen.dart';
 import '../map/map_screen.dart';
 import '../merchant/merchant_screen.dart';
 import '../news/news_screen.dart';
+import '../prayer/prayer_screen.dart';
 import '../rates/rates_screen.dart';
 import '../section/section_screen.dart';
 
 class _Tile {
-  final String titleKey;
-  final String? subtitleKey;
+  final String title;
   final IconData icon;
   final Color color;
   final WidgetBuilder builder;
   final String? count;
-  const _Tile(this.titleKey, this.subtitleKey, this.icon, this.color, this.builder, {this.count});
+
+  /// هل يُحسب إغلاق هذه الشاشة ضمن شروط الإعلان البيني (لا إعلانات بعد الطوارئ والصلاة).
+  final bool ads;
+  const _Tile(this.title, this.icon, this.color, this.builder, {this.count, this.ads = true});
 }
 
 String _norm(String s) => s
@@ -46,32 +58,105 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _search = TextEditingController();
   String _query = '';
   int _tab = 0;
+  int _shownUpdateFor = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    ContentStore.instance.addListener(_maybeShowUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowUpdate());
+    _checkPlayUpdate();
+  }
+
+  /// تحديث جوجل بلاي الداخلي: ينزّل التحديث بالخلفية ثم يعرض زر إعادة التشغيل.
+  Future<void> _checkPlayUpdate() async {
+    await Future<void>.delayed(const Duration(seconds: 6));
+    final ready = await downloadPlayUpdateIfAny();
+    if (!ready || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(days: 1),
+      content: Text('update_downloaded'.tr()),
+      action: SnackBarAction(label: 'restart'.tr(), onPressed: installPlayUpdate),
+    ));
+  }
 
   @override
   void dispose() {
+    ContentStore.instance.removeListener(_maybeShowUpdate);
     _search.dispose();
     super.dispose();
   }
 
+  /// يعرض نافذة «تحديث متوفر» مرة واحدة لكل إصدار جديد.
+  void _maybeShowUpdate() {
+    final u = ContentStore.instance.pendingUpdate;
+    if (u == null || !mounted || _shownUpdateFor == u.versionCode) return;
+    _shownUpdateFor = u.versionCode;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('update_title'.tr()),
+        content: Text(u.message.isEmpty ? 'update_body'.tr() : u.message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('later'.tr())),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              openUri(context, Uri.parse(u.url));
+            },
+            child: Text('update_now'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<_Tile> _tiles() {
     return [
-      _Tile('tile_rates', null, Icons.currency_exchange, const Color(0xFFF9A825),
+      _Tile('tile_rates'.tr(), Icons.currency_exchange, const Color(0xFFF9A825),
           (_) => const RatesScreen()),
-      _Tile('tile_news', null, Icons.newspaper, const Color(0xFFD84315),
-          (_) => const NewsScreen()),
-      _Tile('tile_hotels', null, Icons.hotel, const Color(0xFF6A1B9A),
-          (_) => const HotelsScreen()),
-      _Tile('tile_map', null, Icons.map, const Color(0xFF2E7D32), (_) => const MapScreen()),
-      _Tile('tile_emergency', null, Icons.emergency, const Color(0xFFC62828),
-          (_) => const EmergencyScreen()),
+      _Tile('tile_news'.tr(), Icons.newspaper, const Color(0xFFD84315), (_) => const NewsScreen()),
+      _Tile('tile_hotels'.tr(), Icons.hotel, const Color(0xFF6A1B9A), (_) => const HotelsScreen()),
+      _Tile('tile_prayer'.tr(), Icons.mosque, const Color(0xFF00695C), (_) => const PrayerScreen(),
+          ads: false),
+      _Tile('tile_map'.tr(), Icons.map, const Color(0xFF2E7D32), (_) => const MapScreen()),
+      _Tile('tile_emergency'.tr(), Icons.emergency, const Color(0xFFC62828),
+          (_) => const EmergencyScreen(),
+          ads: false),
       for (final s in directorySections)
-        _Tile('sec_${s.id}', 'sub_${s.id}', s.icon, s.color,
-            (_) => SectionScreen(section: s),
+        _Tile(sectionTitle(s), s.icon, s.color, (_) => SectionScreen(section: s),
             count: 'items_count'.tr(args: ['${s.count}'])),
     ];
   }
 
-  void _push(Widget w) => Navigator.push(context, MaterialPageRoute(builder: (_) => w));
+  /// فتح شاشة. عند الرجوع منها يُسأل مدير الإعلانات هل حان وقت إعلان بيني نادر.
+  Future<void> _open(WidgetBuilder builder, {bool ads = true}) async {
+    await Navigator.push(context, MaterialPageRoute(builder: builder));
+    if (ads) AdService.instance.screenClosed();
+  }
+
+  /// فتح شاشة من القائمة العلوية أو الشريط: لا تُحسب للإعلانات.
+  void _push(Widget w) => _open((_) => w, ads: false);
+
+  Future<void> _adFreeFlow() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final hours = AdService.instance.settings.adFreeHours;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('ad_free_title'.tr()),
+        content: Text('ad_free_body'.tr(args: ['$hours'])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('cancel'.tr())),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('ad_free_watch'.tr())),
+        ],
+      ),
+    );
+    if (go != true) return;
+    final ok = await AdService.instance.watchForAdFree();
+    messenger.showSnackBar(SnackBar(
+        content: Text(ok ? 'ad_free_done'.tr(args: ['$hours']) : 'ad_free_unavailable'.tr())));
+  }
 
   List<DirItem> _results() {
     final q = _norm(_query);
@@ -81,13 +166,73 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList();
   }
 
+  Future<void> _onMenu(String value) async {
+    switch (value) {
+      case 'theme':
+        AppState.instance.setDark(!AppState.instance.dark);
+        break;
+      case 'about':
+        _push(const AboutScreen());
+        break;
+      case 'privacy':
+        _push(const PrivacyScreen());
+        break;
+      case 'developer':
+        openUri(context, Uri.parse(AppConfig.developerUrl));
+        break;
+      case 'libya':
+        _push(const AboutLibyaScreen());
+        break;
+      case 'adfree':
+        _adFreeFlow();
+        break;
+      case 'rate':
+        openUri(context, Uri.parse(AppConfig.playUrl));
+        break;
+      case 'share':
+        final messenger = ScaffoldMessenger.of(context);
+        await Clipboard.setData(ClipboardData(
+            text: '${'app_title'.tr()}: ${'share_text'.tr()}\n${AppConfig.playUrl}'));
+        messenger.showSnackBar(SnackBar(content: Text('share_copied'.tr())));
+        break;
+      case 'exit':
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('exit_title'.tr()),
+            content: Text('exit_confirm'.tr()),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('cancel'.tr())),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('exit'.tr())),
+            ],
+          ),
+        );
+        if (ok == true) SystemNavigator.pop();
+        break;
+    }
+  }
+
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
+      PopupMenuItem(
+        value: value,
+        child: Row(children: [Icon(icon, size: 20), const SizedBox(width: 12), Text(label)]),
+      );
+
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ContentStore.instance,
+      builder: (context, _) => _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final searching = _query.trim().isNotEmpty;
     // قراءة اللغة هنا تجعل الشاشة تُعاد رسمها فور تغييرها.
     final localeCode = context.locale.languageCode;
     final tiles = _tiles();
+    final announcement = ContentStore.instance.visibleAnnouncement;
 
     return Scaffold(
       key: ValueKey(localeCode),
@@ -100,22 +245,36 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'news_tooltip'.tr(),
             onPressed: () => _push(const NewsScreen()),
           ),
-          ListenableBuilder(
-            listenable: AppState.instance,
-            builder: (context, _) => IconButton(
-              icon: Icon(AppState.instance.dark ? Icons.light_mode : Icons.dark_mode),
-              tooltip: 'theme_tooltip'.tr(),
-              onPressed: () => AppState.instance.setDark(!AppState.instance.dark),
-            ),
-          ),
           IconButton(
             icon: const Icon(Icons.language),
             tooltip: 'lang_tooltip'.tr(),
             onPressed: () {
-              context.setLocale(context.locale.languageCode == 'ar'
-                  ? const Locale('en')
-                  : const Locale('ar'));
+              context.setLocale(
+                  context.locale.languageCode == 'ar' ? const Locale('en') : const Locale('ar'));
             },
+          ),
+          ListenableBuilder(
+            listenable: Listenable.merge([AppState.instance, AdService.instance]),
+            builder: (context, _) => PopupMenuButton<String>(
+              tooltip: 'menu_tooltip'.tr(),
+              onSelected: _onMenu,
+              itemBuilder: (_) => [
+                _menuItem('theme', AppState.instance.dark ? Icons.light_mode : Icons.dark_mode,
+                    'theme_tooltip'.tr()),
+                const PopupMenuDivider(),
+                _menuItem('about', Icons.info_outline, 'menu_about_app'.tr()),
+                _menuItem('libya', Icons.flag_outlined, 'menu_about_libya'.tr()),
+                _menuItem('privacy', Icons.privacy_tip_outlined, 'menu_privacy'.tr()),
+                _menuItem('developer', Icons.code, 'menu_developer'.tr()),
+                const PopupMenuDivider(),
+                if (AdService.instance.canOfferAdFree)
+                  _menuItem('adfree', Icons.block, 'menu_ad_free'.tr()),
+                _menuItem('rate', Icons.star_outline, 'menu_rate'.tr()),
+                _menuItem('share', Icons.share, 'menu_share'.tr()),
+                const PopupMenuDivider(),
+                _menuItem('exit', Icons.exit_to_app, 'menu_exit'.tr()),
+              ],
+            ),
           ),
         ],
       ),
@@ -126,6 +285,10 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  if (announcement != null) ...[
+                    _announcementCard(context, announcement),
+                    const SizedBox(height: 10),
+                  ],
                   NewsTicker(onTap: () => _push(const NewsScreen())),
                   const SizedBox(height: 14),
                   TextField(
@@ -170,9 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            s.hasCity
-                                ? 'nearby_in'.tr(args: [s.city])
-                                : 'nearby_pick_city'.tr(),
+                            s.hasCity ? 'nearby_in'.tr(args: [s.city]) : 'nearby_pick_city'.tr(),
                             style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
                           ),
                           const SizedBox(height: 6),
@@ -231,18 +392,52 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) {
-          setState(() => _tab = 0);
-          if (i == 1) _push(const FavoritesScreen());
-          if (i == 2) _push(const MerchantScreen());
-        },
-        destinations: [
-          NavigationDestination(icon: const Icon(Icons.home), label: 'nav_home'.tr()),
-          NavigationDestination(icon: const Icon(Icons.bookmark), label: 'nav_favorites'.tr()),
-          NavigationDestination(icon: const Icon(Icons.storefront), label: 'nav_add_store'.tr()),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const AdBanner(),
+          NavigationBar(
+            selectedIndex: _tab,
+            onDestinationSelected: (i) {
+              setState(() => _tab = 0);
+              if (i == 1) _open((_) => const FavoritesScreen());
+              if (i == 2) _push(const MerchantScreen());
+            },
+            destinations: [
+              NavigationDestination(icon: const Icon(Icons.home), label: 'nav_home'.tr()),
+              NavigationDestination(icon: const Icon(Icons.bookmark), label: 'nav_favorites'.tr()),
+              NavigationDestination(icon: const Icon(Icons.storefront), label: 'nav_add_store'.tr()),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _announcementCard(BuildContext context, Announcement a) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.primaryContainer,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: a.url == null ? null : () => openUri(context, Uri.parse(a.url!)),
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
+          child: Row(children: [
+            Icon(Icons.campaign_outlined, color: scheme.onPrimaryContainer),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(a.text, style: TextStyle(color: scheme.onPrimaryContainer, height: 1.4)),
+            ),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close, size: 18, color: scheme.onPrimaryContainer),
+              onPressed: ContentStore.instance.dismissAnnouncement,
+            ),
+          ]),
+        ),
       ),
     );
   }
@@ -272,7 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: t.builder)),
+        onTap: () => _open(t.builder, ads: t.ads),
         child: Padding(
           padding: const EdgeInsets.all(10),
           child: Column(
@@ -284,14 +479,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(t.icon, size: 26, color: t.color),
               ),
               const SizedBox(height: 8),
-              Text(t.titleKey.tr(),
+              Text(t.title,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               if (t.count != null) ...[
                 const SizedBox(height: 2),
-                Text(t.count!,
-                    style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
+                Text(t.count!, style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
               ],
             ],
           ),

@@ -2,11 +2,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/cities.dart';
+import '../../data/news_sources.dart';
 import '../../services/app_state.dart';
 import '../../services/live_data.dart';
 import '../../services/parsers.dart';
 import '../../widgets/open_link.dart';
 import '../../widgets/rates_view.dart';
+import '../../widgets/ad_banner.dart';
 
 /// شاشة الأخبار: أخبار من مصادر ليبية + الطقس + الأسعار.
 class NewsScreen extends StatelessWidget {
@@ -30,6 +32,7 @@ class NewsScreen extends StatelessWidget {
             ],
           ),
         ),
+        bottomNavigationBar: const AdBanner(),
         body: const TabBarView(children: [_NewsTab(), _WeatherTab(), _PricesTab()]),
       ),
     );
@@ -92,22 +95,16 @@ class _NewsTab extends StatelessWidget {
                       onTap: () => openUri(context, Uri.parse(n.link)),
                     ),
                   ),
-              if (d.failedNewsSources.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text('source_unavailable'.tr(args: [d.failedNewsSources.join('، ')]),
-                      style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
-                ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final s in newsSources)
+                  for (final s in newsSourcesWithSite)
                     ActionChip(
                       avatar: const Icon(Icons.open_in_new, size: 16),
                       label: Text(s.name),
-                      onPressed: () => openUri(context, Uri.parse(s.site)),
+                      onPressed: () => openUri(context, Uri.parse(s.site!)),
                     ),
                 ],
               ),

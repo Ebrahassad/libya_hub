@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
 import '../data/cities.dart';
+import '../data/news_sources.dart';
 import 'parsers.dart';
 
 class CityWeather {
@@ -27,29 +28,6 @@ class CityWeather {
         (j['hum'] as num?)?.toDouble(),
       );
 }
-
-class NewsSource {
-  final String name;
-  final String site;
-  final List<String> feeds;
-  const NewsSource(this.name, this.site, this.feeds);
-}
-
-/// مصادر الأخبار. لكل مصدر أكثر من رابط تغذية محتمل، يُجرَّب بالترتيب
-/// ويُعتمد أول رابط يرجع أخباراً. المصدر الذي لا يستجيب يظهر في الشاشة
-/// مع زر لفتح موقعه مباشرة.
-const List<NewsSource> newsSources = [
-  NewsSource('عين ليبيا', 'https://www.eanlibya.com/',
-      ['https://www.eanlibya.com/feed/']),
-  NewsSource('ليبيا هيرالد', 'https://libyaherald.com/',
-      ['https://libyaherald.com/feed']),
-  NewsSource('بوابة الوسط', 'https://alwasat.ly/',
-      ['https://alwasat.ly/rss', 'https://alwasat.ly/feed']),
-  NewsSource('ليبيا أوبزرفر', 'https://www.libyaobserver.ly/',
-      ['https://www.libyaobserver.ly/rss.xml', 'https://www.libyaobserver.ly/feed']),
-  NewsSource('مصرف ليبيا المركزي', 'https://cbl.gov.ly/blog/',
-      ['https://cbl.gov.ly/feed/']),
-];
 
 /// حالة تحميل جزء من البيانات.
 enum LoadState { idle, loading, ok, failed }
@@ -272,11 +250,12 @@ class LiveData extends ChangeNotifier {
   Future<void> _refreshNews() async {
     final failed = <String>{};
     final all = <NewsItem>[];
-    await Future.wait(newsSources.map((s) async {
+    final sources = newsSources;
+    await Future.wait(sources.map((s) async {
       for (final feed in s.feeds) {
         final body = await _get(feed);
         if (body == null) continue;
-        final items = parseFeed(body, s.name);
+        final items = parseFeed(body, s.name, limit: s.limit);
         if (items.isNotEmpty) {
           all.addAll(items);
           return;
@@ -284,19 +263,44 @@ class LiveData extends ChangeNotifier {
       }
       failed.add(s.name);
     }));
+    // ترتيب الأحدث أولاً وإزالة الأخبار المكررة.
     all.sort((a, b) {
       final da = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
       final db = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
       return db.compareTo(da);
     });
+    final seen = <String>{};
+    final unique = <NewsItem>[];
+    for (final n in all) {
+      if (seen.add(newsKey(n.title))) unique.add(n);
+    }
     failedNewsSources = failed;
-    if (all.isNotEmpty) {
-      news = all;
+    if (unique.isNotEmpty) {
+      news = unique.take(120).toList();
       newsState = LoadState.ok;
     } else {
       newsState = LoadState.failed;
     }
     notifyListeners();
+  }
+
+  /// عناوين متنوعة للشريط المتحرك: نأخذ بالتناوب من كل موقع (حسب اسم الموقع
+  /// الأصلي لكل خبر) حتى لا يطغى مصدر واحد.
+  List<NewsItem> tickerNews(int count) {
+    final bySource = <String, List<NewsItem>>{};
+    for (final n in news) {
+      bySource.putIfAbsent(n.source, () => []).add(n);
+    }
+    final queues = bySource.values.toList();
+    final out = <NewsItem>[];
+    var i = 0;
+    while (out.length < count && queues.any((q) => q.length > i)) {
+      for (final q in queues) {
+        if (q.length > i && out.length < count) out.add(q[i]);
+      }
+      i++;
+    }
+    return out;
   }
 
   // ---------- التخزين المؤقت (للعمل بدون إنترنت) ----------

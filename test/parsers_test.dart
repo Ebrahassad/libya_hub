@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:libya_hub/services/ad_settings.dart';
+import 'package:libya_hub/services/content_parser.dart';
 import 'package:libya_hub/services/parsers.dart';
+import 'package:libya_hub/services/prayer.dart';
 
 void main() {
   test('parseCblRates reads rows with or without labels', () {
@@ -55,5 +58,83 @@ void main() {
     expect(weatherKey(3), 'w_cloudy');
     expect(weatherKey(63), 'w_rain');
     expect(weatherKey(95), 'w_storm');
+  });
+
+  test('parseFeed uses the <source> tag and strips the title suffix', () {
+    const xml = '''
+<rss><channel>
+<item><title>الدبيبة يلتقي وفداً - بوابة الوسط</title><link>https://news.google.com/a</link>
+<pubDate>Wed, 30 Sep 2026 10:00:00 GMT</pubDate><source url="https://alwasat.ly">بوابة الوسط</source></item>
+</channel></rss>''';
+    final items = parseFeed(xml, 'أخبار ليبيا');
+    expect(items.length, 1);
+    expect(items[0].source, 'بوابة الوسط');
+    expect(items[0].title, 'الدبيبة يلتقي وفداً');
+  });
+
+  test('newsKey makes equal headlines equal', () {
+    expect(newsKey('خبر: عاجل!'), newsKey('خبر عاجل'));
+  });
+
+  test('parsePrayerTimes reads Aladhan timings', () {
+    const body =
+        '{"data":{"timings":{"Fajr":"05:12 (EET)","Sunrise":"06:30","Dhuhr":"12:05","Asr":"15:20","Maghrib":"17:41","Isha":"19:00"}}}';
+    final t = parsePrayerTimes(body)!;
+    expect(t['Fajr'], '05:12');
+    expect(t['Isha'], '19:00');
+    expect(parsePrayerTimes('{}'), isNull);
+  });
+
+  test('parseDirItem accepts valid items and rejects unsafe ones', () {
+    expect(parseDirItem({'type': 'web', 'title': 'a', 'url': 'https://x.ly/'}), isNotNull);
+    expect(parseDirItem({'type': 'web', 'title': 'a', 'url': 'javascript:alert(1)'}), isNull);
+    expect(parseDirItem({'type': 'app', 'title': 'a', 'package': 'com.a.b'}), isNotNull);
+    expect(parseDirItem({'type': 'app', 'title': 'a', 'package': 'bad package'}), isNull);
+    expect(parseDirItem({'type': 'phone', 'title': 'a', 'phone': '+218910000000'}), isNotNull);
+    expect(parseDirItem({'type': 'phone', 'title': 'a', 'phone': 'abc'}), isNull);
+    expect(parseDirItem({'title': '', 'url': 'https://x.ly/'}), isNull);
+  });
+
+  test('parseSections and mergeSections replace by id and append new ones', () {
+    final remote = parseSections([
+      {
+        'id': 'cars',
+        'title': 'السيارات',
+        'groups': [
+          {
+            'title': 'g',
+            'items': [
+              {'type': 'web', 'title': 'x', 'url': 'https://x.ly/'}
+            ]
+          }
+        ]
+      },
+      {'id': 'broken', 'groups': []},
+    ]);
+    expect(remote.length, 1);
+    final merged = mergeSections(remote, remote, const ['zzz']);
+    expect(merged.length, 1);
+    expect(merged.first.title, 'السيارات');
+    expect(mergeSections(remote, const [], const ['cars']), isEmpty);
+  });
+
+  test('AdSettings: no game id means ads are off, and limits are clamped', () {
+    final d = AdSettings.fromJson(null);
+    expect(d.active, isFalse);
+    final a = AdSettings.fromJson({
+      'gameId': 1234567,
+      'interstitialEvery': 1,
+      'minSecondsBetween': 5,
+      'dailyCap': 99,
+      'bannerPlacement': 'bad placement!',
+    });
+    expect(a.active, isTrue);
+    expect(a.gameId, '1234567');
+    expect(a.interstitialEvery, 3);
+    expect(a.minSecondsBetween, 90);
+    expect(a.dailyCap, 12);
+    expect(a.bannerPlacement, 'Banner_Android');
+    expect(AdSettings.fromJson({'gameId': 'abc'}).active, isFalse);
+    expect(AdSettings.fromJson({'gameId': '1234567', 'enabled': false}).active, isFalse);
   });
 }

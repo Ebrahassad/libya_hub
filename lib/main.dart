@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import 'services/ad_service.dart';
 import 'services/app_state.dart';
+import 'services/content_store.dart';
 import 'services/live_data.dart';
 import 'views/home/home_screen.dart';
 
@@ -11,6 +13,10 @@ Future<void> main() async {
   await AppState.instance.load();
   // بدء جلب البيانات المباشرة في الخلفية دون انتظار.
   LiveData.instance.start();
+  // المحتوى البعيد (روابط، تطبيقات، فنادق، إعلانات) يصل دون تحديث من المتجر.
+  ContentStore.instance.start();
+  // الإعلانات: لا تعمل إلا بعد وضع Game ID (انظر README).
+  AdService.instance.start();
 
   runApp(
     EasyLocalization(

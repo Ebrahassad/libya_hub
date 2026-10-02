@@ -172,17 +172,12 @@ class _RatesViewState extends State<RatesView> {
           icon: Icons.oil_barrel,
           color: Colors.brown,
           children: [
-            if (d.brentUsd != null)
-              _row('oil_barrel'.tr(), _n(d.brentUsd), bold: true)
-            else ...[
-              Text(d.oilConfigured ? 'rates_failed'.tr() : 'oil_no_key'.tr()),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.open_in_new, size: 18),
-                label: Text('oil_open_source'.tr()),
-                onPressed: () => openUri(context, Uri.parse('https://oilprice.com/oil-price-charts/')),
-              ),
-            ],
+            if (d.brentUsd != null) _row('oil_barrel'.tr(), _n(d.brentUsd), bold: true),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text('oil_open_source'.tr()),
+              onPressed: () => openUri(context, Uri.parse('https://oilprice.com/oil-price-charts/')),
+            ),
           ],
         );
 

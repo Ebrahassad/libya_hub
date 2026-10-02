@@ -1,3 +1,4 @@
+import '../services/content_store.dart';
 import 'directory.dart';
 
 /// فندق في الدليل.
@@ -36,7 +37,8 @@ const List<DirItem> hotelSources = [
 Uri bookingSearchUri(String city) => Uri.parse(
     'https://www.booking.com/searchresults.ar.html?ss=${Uri.encodeComponent('$city، ليبيا')}');
 
-const List<Hotel> libyaHotels = [
+/// الفنادق المضمّنة. المحتوى البعيد (content.json) يمكنه استبدال القائمة.
+const List<Hotel> defaultHotels = [
   // ---------- طرابلس ----------
   Hotel('فندق كورنثيا طرابلس', 'طرابلس',
       stars: 5,
@@ -106,6 +108,9 @@ const List<Hotel> libyaHotels = [
   // ---------- طبرق ----------
   Hotel('فندق المسيرة', 'طبرق', stars: 4, note: '240 غرفة وجناحاً.'),
 ];
+
+/// الفنادق الحالية.
+List<Hotel> get libyaHotels => ContentStore.instance.hotels;
 
 List<Hotel> hotelsInCity(String city) =>
     libyaHotels.where((h) => h.city == city).toList();

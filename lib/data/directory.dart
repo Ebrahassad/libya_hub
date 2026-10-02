@@ -1,4 +1,8 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+
+import '../services/content_store.dart';
+import 'apps_data.dart';
 
 enum LinkKind { web, app, phone }
 
@@ -75,62 +79,19 @@ class DirSection {
   final IconData icon;
   final Color color;
   final List<DirGroup> groups;
-  const DirSection(this.id, this.icon, this.color, this.groups);
+
+  /// عنوان وعنوان فرعي للأقسام القادمة من المحتوى البعيد (التي ليس لها ترجمة).
+  final String? title;
+  final String? subtitle;
+  const DirSection(this.id, this.icon, this.color, this.groups,
+      {this.title, this.subtitle});
 
   int get count => groups.fold(0, (a, g) => a + g.items.length);
 }
 
-const List<DirSection> directorySections = [
-  DirSection('apps', Icons.apps, Color(0xFF7B1FA2), [
-    DirGroup('اتصالات', [
-      DirItem.app('My Libyana - ليبيانا', 'الرصيد والشحن والباقات والعروض.',
-          package: 'com.ztesoft.zsmart.datamall.libyana'),
-      DirItem.app('المدار الجديد',
-          'الرصيد والفاتورة وشحن الرصيد ومراكز الخدمة على الخريطة.',
-          package: 'com.aljadid.almadar.almadarapp'),
-      DirItem.app('الو ليبيا', 'اتصال بالشبكات الليبية لمشتركي التجوال.',
-          package: 'com.aljadid.almadar.alo.libya'),
-    ]),
-    DirGroup('مصارف ودفع', [
-      DirItem.app('مصرفي بلس - مصرف الجمهورية',
-          'إدارة الحساب والتحويلات لعملاء مصرف الجمهورية.',
-          package: 'mitt.JamBank'),
-      DirItem.app('مصرفي أعمال', 'للتجار والشركات من عملاء مصرف الجمهورية.',
-          package: 'com.mitt.Jumbusiness'),
-      DirItem.app('مصرفي باي', 'استلام مدفوعات التجار عبر QR أو SMS.',
-          package: 'ly.mitf.musrefypay'),
-      DirItem.app('الوحدة موبايل - مصرف الوحدة',
-          'بطاقة فيزا وتحويلات وخدمة توا (اشترِ الآن وادفع لاحقاً).',
-          package: 'com.wahdabank.future'),
-      DirItem.app('NCB Business - التجاري الوطني',
-          'خدمات المصرف التجاري الوطني للأعمال.',
-          package: 'mitt.NCBBusiness'),
-      DirItem.app('صحارى موبايل - مصرف الصحارى',
-          'خدمات مصرف الصحارى وإدارة حساب الدولار.',
-          package: 'com.mitf.SaharaMobile'),
-      DirItem.app('موبي مال - التجاري الوطني', 'الخدمة المصرفية للأفراد.',
-          searchName: 'موبي مال'),
-      DirItem.app('سداد', 'خدمة الدفع الإلكتروني من المدار الجديد.',
-          searchName: 'سداد المدار'),
-    ]),
-    DirGroup('خدمات وإنترنت', [
-      DirItem.app('العنكبوت الليبي', 'الدومينات والاستضافة وسداد الفواتير.',
-          package: 'ly.ls.app'),
-      DirItem.app('Libya Post - البريد الليبي',
-          'الشحنات والأسعار وأقرب مكتب بريد.',
-          package: 'ly.libyapost.app'),
-      DirItem.app('تلفزيون ليبيا', 'روابط القنوات الليبية الرسمية.',
-          package: 'ly.libya.tv.live'),
-      DirItem.app('أسعار العملات في ليبيا',
-          'تطبيق غير رسمي للأسعار، قارن دائماً بالمصدر الرسمي.',
-          package: 'com.arappdev.libya_exc'),
-    ]),
-    DirGroup('تسوق وتوصيل ونقل', [
-      DirItem.app('باهي - تسوق', 'متجر إلكتروني ليبي.', searchName: 'Baahy'),
-      DirItem.app('Toters', 'توصيل طلبات.', searchName: 'Toters'),
-      DirItem.app('Yassir', 'طلب سيارة أجرة.', searchName: 'Yassir'),
-    ]),
-  ]),
+/// الأقسام المضمّنة في التطبيق. المحتوى البعيد (content.json) يمكنه تعديلها أو إضافة أقسام.
+const List<DirSection> defaultSections = [
+  appsSection,
   DirSection('gov', Icons.account_balance, Color(0xFF1565C0), [
     DirGroup('خدمات المواطن', [
       DirItem.web('الرقم الوطني', 'المشروع الوطني للرقم الوطني وخدماته.',
@@ -212,10 +173,6 @@ const List<DirSection> directorySections = [
       DirItem.web('الخطوط الجوية الليبية', 'الناقل الوطني.',
           'https://libyanairlines.aero/'),
     ]),
-    DirGroup('بريد وشحن', [
-      DirItem.app('Libya Post - البريد الليبي', 'تتبع الشحنات وأقرب مكتب.',
-          package: 'ly.libyapost.app'),
-    ]),
   ]),
   DirSection('edu', Icons.school, Color(0xFF6A1B9A), [
     DirGroup('التعليم', [
@@ -257,6 +214,22 @@ const List<DirSection> directorySections = [
     ]),
   ]),
 ];
+
+/// الأقسام الحالية (المضمّنة + أي تحديث من المحتوى البعيد).
+List<DirSection> get directorySections => ContentStore.instance.sections;
+
+/// عنوان القسم: من ملف الترجمة إن وُجد، وإلا العنوان القادم من المحتوى البعيد.
+String sectionTitle(DirSection s) {
+  final key = 'sec_${s.id}';
+  final t = key.tr();
+  return t == key ? (s.title ?? s.id) : t;
+}
+
+String sectionSubtitle(DirSection s) {
+  final key = 'sub_${s.id}';
+  final t = key.tr();
+  return t == key ? (s.subtitle ?? '') : t;
+}
 
 /// كل العناصر (للبحث والمفضلة).
 List<DirItem> allDirectoryItems() => [

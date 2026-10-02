@@ -20,8 +20,12 @@ class EmergencyScreen extends StatelessWidget {
         listenable: AppState.instance,
         builder: (context, _) {
           final s = AppState.instance;
-          final medical = sectionById('health')!;
-          final energy = sectionById('energy')!;
+          final medical = sectionById('health');
+          final energy = sectionById('energy');
+          final links = [
+            ...?medical?.groups.first.items,
+            ...?energy?.groups.first.items.take(2),
+          ];
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -89,7 +93,7 @@ class EmergencyScreen extends StatelessWidget {
               Text('useful_links'.tr(),
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              for (final item in [...medical.groups.first.items, ...energy.groups.first.items.take(2)])
+              for (final item in links)
                 Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
